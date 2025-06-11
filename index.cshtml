@@ -1,0 +1,27 @@
+@model IEnumerable<WebSystem.Models.Cliente>
+
+@{
+    ViewBag.Title = "Clientes";
+}
+
+<h2>Lista de Clientes</h2>
+<p>@Html.ActionLink("Adicionar novo cliente", "Create")</p>
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Email</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Nome</td>
+                <td>@item.Email</td>
+                <td>@Html.ActionLink("Editar", "Edit", new { id = item.Id })</td>
+            </tr>
+        }
+    </tbody>
+</table>
