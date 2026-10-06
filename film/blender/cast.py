@@ -64,17 +64,19 @@ def make_employee(name="employee", glb="Soldier.glb"):
     return rig.Character(glb, name, faces_neg_y=(glb != "Soldier.glb"))
 
 
-def _crescent(bm, w, k, o, z0, y0, n=24):
-    """Smile crescent in the XZ plane at depth y0. Returns (upper_edge, lower_edge) vertex lists."""
-    up, lo = [], []
+def _crescent(bm, w, k, o, z0, y0, n=72, rows=10):
+    """Smile crescent in the XZ plane, as a dense grid so it can hug the face."""
+    grid = []
     for i in range(n + 1):
         x = -w + 2 * w * i / n
         t = (x / w) ** 2
-        up.append(bm.verts.new((x, y0, z0 + k * t)))
-        lo.append(bm.verts.new((x, y0, z0 + k * t - o * (1 - t))))
+        zu = z0 + k * t
+        zl = zu - o * (1 - t)
+        grid.append([bm.verts.new((x, y0, zu + (zl - zu) * j / rows)) for j in range(rows + 1)])
     for i in range(n):
-        bm.faces.new((up[i], up[i + 1], lo[i + 1], lo[i]))
-    return up, lo
+        for j in range(rows):
+            bm.faces.new((grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]))
+    return [col[0] for col in grid], [col[-1] for col in grid]
 
 
 def _smile_mesh(name, w, k, o, part):
@@ -122,7 +124,7 @@ def _face_probe(c, z):
     return front.y, hw
 
 
-def add_smile(c, rel_height=0.19, width_frac=0.88):
+def add_smile(c, rel_height=0.26, width_frac=0.9):
     """A dark crescent plus two rows of teeth on the blank face, driven by a shape key
     'smile' (0 = invisible slit, 1 = full grin). Every vertex of both shapes is
     ray-cast onto the face once (rest pose) and the result is parented rigidly to the
@@ -147,8 +149,8 @@ def add_smile(c, rel_height=0.19, width_frac=0.88):
             "teeth": rig.principled("teeth", (0.72, 0.68, 0.58), rough=0.35)}
     c.mouth_parts, c.smile_keys = [], []
     parts = []
-    for part, offset in (("dark", 0.0025), ("teeth", 0.0045)):
-        me = _smile_mesh("smile_" + part, width, width * 0.55, width * 0.5, part)
+    for part, offset in (("dark", 0.003), ("teeth", 0.0048)):
+        me = _smile_mesh("smile_" + part, width, width * 0.5, width * 0.78, part)
         full = [vtx.co.copy() for vtx in me.vertices]
         slit = [Vector((p.x * 0.3, p.y, p.z * 0.02)) for p in full]
         wide = [Vector((p.x, p.y, p.z * 0.16 + 0.35 * width * 0.5 * (p.x / width) ** 2)) for p in full]

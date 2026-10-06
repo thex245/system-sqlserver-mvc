@@ -386,7 +386,7 @@ class Containment(Shot):
         if enhanced:
             lines.append((26, 50, "DIGITAL ENHANCE x4", "la"))
         if t >= self.tf:
-            lines.append((W // 2, H - 56, "FRAME HOLD", "ma"))
+            lines.append((W // 2, 22, "FRAME HOLD", "ma"))
         img = _osd_cached(tuple(lines)).over(img)
         # P-04 tag
         if 3.0 <= t < 8.5 and not enhanced:
