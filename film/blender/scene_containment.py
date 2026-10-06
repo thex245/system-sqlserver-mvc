@@ -7,7 +7,9 @@ Choreography (times in film/p04.py):
   it raises its head in stages and extends its hand, elbow first; he reaches back,
   stops short, holds, and pulls his hand away. Three minutes later (clock jump in
   the edit) a thin line opens across its blank face. The light flickers and dies.
-  When it comes back the specimen is looking straight into the camera, grinning.
+  When it comes back the floor in front of him is empty: the specimen is standing
+  right under the camera, head tipped back, grinning up into the lens (lit by the
+  camera's IR illuminator).
 
 Cameras: cam1 = the CCTV; z4 / z8 = the same camera with 4x / 8x focal length and
 lens shift onto its face (an exact optical stand-in for a digital zoom).
@@ -22,7 +24,7 @@ import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import cast  # noqa: E402
@@ -121,6 +123,9 @@ light_state(p04.BLACKOUT[1] + 0.06, 0.15)
 light_state(p04.BLACKOUT[1] + 0.11, 1)
 for idb in (lamp.data, bounce.data, corridor.data, fixture_mat.node_tree):
     rig.constant_interp(idb)
+# the camera's own IR illuminator: negligible across the room, harsh on anything close to the lens
+rig.point_light("ir_ring", (1.80, -2.0, 2.58), float(__import__("os").environ.get("IR_W", "30")),
+                color=(0.92, 0.97, 1.0), radius=0.04)
 rig.world((0, 0, 0), 0)
 
 # ---------------------------------------------------------------- positions
@@ -151,8 +156,15 @@ C_HEAD = C_POS + Vector((0, 0, 0.8))
 E_HEAD_KNEEL = E_KNEEL + Vector((0, 0, 1.18))
 look_floor = to_char(c, (E_KNEEL + Vector((0, 0, 0.1))) - C_HEAD)
 look_emp = to_char(c, E_HEAD_KNEEL - C_HEAD)
-look_cam = to_char(c, CAM_POS - C_HEAD)
-look_past = to_char(c, CAM_POS + Vector((0.9, 0.4, 0)) - C_HEAD)
+# The face sits ~25 degrees below the head bone's forward axis, so to look straight into
+# the lens the head aims a little above it.
+STARE_LIFT = float(__import__("os").environ.get("STARE_LIFT", "2.0"))
+STARE_ROLL = [float(x) for x in __import__("os").environ.get("STARE_ROLL", "-8,-18").split(",")]
+STARE_SIDE = float(__import__("os").environ.get("STARE_SIDE", "0"))
+STAND_DIST = float(__import__("os").environ.get("STAND_DIST", "0.85"))
+CAM_RIGHT = Vector((0.707, 0.707, 0))
+look_cam = to_char(c, CAM_POS + Vector((0, 0, STARE_LIFT)) + CAM_RIGHT * STARE_SIDE - C_HEAD)
+look_past = to_char(c, CAM_POS + Vector((0, 0, STARE_LIFT)) + CAM_RIGHT * (STARE_SIDE + 1.0) - C_HEAD)
 
 HUG = cast.SIT_HUG
 HALF = dict(cast.LEGS_SIT, **cast.HUG_ARMS, **{
@@ -196,13 +208,47 @@ ckey(p04.HAND_OUT[0] + 1.2, look=look_emp, hand=HAND_LOW)
 ckey(p04.HAND_OUT[0] + 2.3, look=look_emp, hand=HAND_MID)
 ckey(p04.HAND_OUT[1], look=look_emp, hand=HAND_FINAL)
 ckey(p04.BLACKOUT[0] + 0.02, look=look_emp, hand=HAND_FINAL)
-# the turn happens in the dark: fast, with an overshoot
-ckey(p04.BLACKOUT[0] + 0.10, look=look_past, hand=HAND_FINAL, neck=(0.1, -0.2, 1))
-ckey(p04.BLACKOUT[0] + 0.16, look=look_cam, hand=HAND_FINAL, roll=-14, neck=(0.12, -0.25, 1))
-ckey(p04.STARE, look=look_cam, hand=HAND_FINAL, roll=-14, neck=(0.12, -0.25, 1))
-# while it stares, its head keeps tilting, very slowly
-ckey(p04.FREEZE, look=look_cam, hand=HAND_FINAL, roll=-27, neck=(0.12, -0.25, 1))
-ckey(p04.FREEZE + 2, look=look_cam, hand=HAND_FINAL, roll=-27, neck=(0.12, -0.25, 1))
+# In the dark it moves. When the light returns it is standing right under the camera,
+# head tipped back, grinning up into the lens.
+STAND_POS = Vector((CAM_POS.x, CAM_POS.y, 0)) + Vector((-0.707, 0.707, 0)) * STAND_DIST
+YAW_STAND = yaw_to(CAM_POS - STAND_POS)
+
+
+def char_dir_at(yaw, d):
+    """world direction -> character space for a root turned by `yaw`"""
+    return tuple((Matrix.Rotation(yaw, 3, "Z").inverted() @ Vector(d)).normalized())
+
+
+T_JUMP = p04.BLACKOUT[0] + 0.07
+for tt, loc, yaw in ((0, C_POS, yaw_to(TO_EMP)), (T_JUMP - 0.01, C_POS, yaw_to(TO_EMP)), (T_JUMP, STAND_POS, YAW_STAND)):
+    c.root.location = loc
+    c.root.rotation_euler = (0, 0, yaw)
+    c.root.keyframe_insert("location", frame=fr(tt))
+    c.root.keyframe_insert("rotation_euler", frame=fr(tt))
+rig.set_interpolation(c.root, "CONSTANT")
+c.root.location = STAND_POS
+c.root.rotation_euler = (0, 0, YAW_STAND)
+bpy.context.view_layer.update()
+HEAD_STAND = STAND_POS + Vector((0, 0, 2.02))
+lens_dir = char_dir_at(YAW_STAND, CAM_POS + Vector((0, 0, STARE_LIFT)) - HEAD_STAND)
+
+
+def lookup_pose(roll, lean):
+    p = dict(cast.STAND, look=v(*lens_dir), roll=roll, Neck=v(0, -0.25, 1), Spine2=v(0, -0.08, 1),
+             fingers=0.25)
+    c.pose(p, hips=(0, -lean, 0))
+
+
+lookup_pose(STARE_ROLL[0], 0.0)
+c.key(fr(T_JUMP))
+c.key(fr(p04.STARE))
+lookup_pose(STARE_ROLL[1], 0.07)          # it keeps leaning, very slowly, toward the lens
+c.key(fr(p04.FREEZE))
+c.key(fr(p04.FREEZE + 2))
+for fc in rig.fcurves_of(c.arm):           # the sitting pose holds until the jump, no in-between
+    for kp in fc.keyframe_points:
+        if int(round(kp.co.x)) == fr(p04.BLACKOUT[0] + 0.02):
+            kp.interpolation = "CONSTANT"
 cast.key_smile(c, fr(0), 0.0)
 cast.key_smile(c, fr(p04.SMILE[0]), 0.0)
 cast.key_smile(c, fr(p04.SMILE[1]), 0.5)
