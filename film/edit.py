@@ -317,7 +317,7 @@ def build():
     tl.bed("roomtone", t0, t0 + cell.t_real_end + 0.5, 0.8)
     tl.s("ff_whine", t0, dur=cell.lapse, level=0.14)
     tl.v("s07b", t0 + 0.6)
-    tl.v("s07c", t0 + cell.lapse + 7.4)
+    tl.v("s07c", t0 + cell.lapse + 9.3)
     td = t0 + cell.t_real_end
     tl.s("distort_swell", td, dur=1.0, level=0.5)
     tl.silences.append((td + 0.4, td + cell.distort))

@@ -148,6 +148,26 @@ class Character:
         if hand_dir is not None:
             self.aim_world(f"{side}Hand", hand_dir)
 
+    def palm_normal(self, side):
+        """Direction the palm faces (world), from the knuckle line and the finger direction."""
+        d = (self.joint(f"{side}HandMiddle1") - self.joint(f"{side}Hand")).normalized()
+        k = (self.joint(f"{side}HandPinky1") - self.joint(f"{side}HandIndex1")).normalized()
+        n = d.cross(k) if side == "Left" else k.cross(d)
+        return n.normalized(), d
+
+    def orient_palm(self, side, normal):
+        """Roll the hand about its own axis so the palm faces `normal` (world)."""
+        n, d = self.palm_normal(side)
+        want = Vector(normal) - d * Vector(normal).dot(d)
+        if want.length < 1e-6:
+            return
+        want.normalize()
+        n_p = (n - d * n.dot(d)).normalized()
+        ang = n_p.angle(want)
+        if d.dot(n_p.cross(want)) < 0:
+            ang = -ang
+        self.rotate_world(self.pb(f"{side}Hand"), Quaternion(d, ang))
+
     def twist(self, short, deg):
         """Roll a segment about its own axis (positive = right-hand rule)."""
         pb = self.pb(short)

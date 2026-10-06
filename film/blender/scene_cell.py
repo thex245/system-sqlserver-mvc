@@ -1,15 +1,17 @@
 """SLIDE 07 — Incident 12, security camera, 1997.
 
 A man sits on a chair in front of a containment cell. Behind the glass, the
-specimen stands and watches him. It lays its hand on the glass; he does the same,
-on the same spot.
+specimen stands and watches him. It kneels down to his level and lays its hand flat
+on the glass; he answers with his, palm to palm, each on their own side.
 
-  0-9 s    "four hours" — small changes of posture (cut as a time-lapse in the edit)
-  9-13 s   the specimen raises its hand to the glass
+  0-9 s     "four hours" — small changes of posture (cut as a time-lapse in the edit)
+  9.4-11 s  the specimen kneels by the glass
+  11.4-13.8 s its hand rises and lies flat on the glass
   14.5-18 s the man raises his hand to meet it
-  18-22 s  hold
+  18-21 s   hold
 
-Outputs build/renders/cell/####.png + track.json
+Renders at 60 fps (time-lapse part every 12th frame).
+Outputs build/renders/cell/#####.png + track.json
 usage: python3 scene_cell.py [--preview]
 """
 import math
@@ -25,8 +27,8 @@ from rig import v
 PREVIEW = "--preview" in sys.argv
 rig.reset_scene()
 sc = bpy.context.scene
-sc.render.fps = 30
-FPS = 30
+sc.render.fps = 60
+FPS = 60
 
 
 def sec(t):
@@ -72,7 +74,7 @@ rig.box("head", (5, 0.3, 0.3), (0, 0, H - 0.15), steel)
 for x in (-2.3, -0.75, 0.75, 2.3):
     rig.box(f"mullion{x}", (0.08, 0.12, 2.4), (x, 0, 1.35), steel)
 # chair
-CH = Vector((-0.35, -0.62, 0))
+CH = Vector((-0.4, -0.52, 0))
 rig.box("seat", (0.45, 0.42, 0.04), (CH.x, CH.y, 0.46), chair_m)
 rig.box("back", (0.45, 0.04, 0.45), (CH.x, CH.y - 0.2, 0.72), chair_m)
 for dx in (-0.2, 0.2):
@@ -100,30 +102,47 @@ SIT = {"LeftUpLeg": v(0.12, -1, 0.04), "RightUpLeg": v(-0.12, -1, 0.04), "LeftLe
 SIT_HIPS = (0, 0.1, -0.5)
 
 
-def man_pose(frame, look=(0, -1, 0.08), spine=(0, -0.12, 1), hand=None):
+MEET = Vector((0.16, 0.0, 1.24))      # the spot on the glass where the two hands meet
+
+
+def man_pose(frame, look=(0, -1, 0.08), spine=(0, -0.12, 1), hand=None, lean=0.0):
     p = dict(SIT, look=v(*look), Spine=v(*spine))
+    if lean:
+        p["Spine1"] = v(0, -0.12 - lean, 1)
+        p["Spine2"] = v(0, -0.1 - lean, 1)
     man.pose(p, hips=SIT_HIPS)
     if hand is not None:
-        man.ik_arm("Right", hand, pole=Vector((0.4, 0.0, -1.0)), hand_dir=Vector((0.0, 0.25, 1.0)))
-        man.curl_fingers(0.0, side=("Right",))
+        h, flat = hand
+        man.ik_arm("Right", h, pole=Vector((0.6, -0.3, -1.0)), hand_dir=Vector((0.05, 0.0, 1.0)))
+        if flat:
+            man.orient_palm("Right", Vector((0, 1, 0)))      # palm against the glass
+        man.curl_fingers(0.0 if flat else 0.25, side=("Right",))
     man.key(frame)
 
 
 # ---------------------------------------------------------------- the specimen
 c = cast.make_creature("p12")
 cast.add_smile(c)
-C_POS = Vector((-0.42, 0.42, 0))
+C_POS = Vector((-0.3, 0.34, 0))
 c.root.location = C_POS
 bpy.context.view_layer.update()
-GLASS_PT = Vector((-0.1, -0.012, 1.36))      # the spot both hands meet (creature side)
+KNEEL_UP = dict(cast.ARMS_DOWN, **{
+    "LeftUpLeg": v(0.12, 0.05, -1), "RightUpLeg": v(-0.12, 0.05, -1), "LeftLeg": v(0, 1, -0.08),
+    "RightLeg": v(0, 1, -0.08), "LeftFoot": v(0, 1, -0.5), "RightFoot": v(0, 1, -0.5),
+    "Spine": v(0, -0.08, 1), "Spine1": v(0, -0.1, 1), "Spine2": v(0, -0.1, 1), "Neck": v(0, -0.2, 1), "fingers": 0.1})
+KNEEL_HIPS = (0, 0.05, -0.56)
 
 
-def c_pose(frame, look=(0, -1, -0.15), hand=None, tilt=0.0):
-    p = dict(cast.STAND, look=v(look[0] + tilt, look[1], look[2]))
-    c.pose(p)
+def c_pose(frame, look=(0, -1, -0.15), hand=None, tilt=0.0, kneel=False, roll=0.0):
+    base = KNEEL_UP if kneel else cast.STAND
+    p = dict(base, look=v(look[0] + tilt, look[1], look[2]), roll=roll)
+    c.pose(p, hips=KNEEL_HIPS if kneel else (0, 0, 0))
     if hand is not None:
-        c.ik_arm("Left", hand, pole=Vector((0.5, 0.2, -1.0)), hand_dir=Vector((0.0, -0.25, 1.0)))
-        c.curl_fingers(0.0, side=("Left",))
+        h, flat = hand
+        c.ik_arm("Left", h, pole=Vector((0.5, 0.2, -1.0)), hand_dir=Vector((0.05, 0.0, 1.0)))
+        if flat:
+            c.orient_palm("Left", Vector((0, -1, 0)))
+        c.curl_fingers(0.0 if flat else 0.2, side=("Left",))
     c.key(frame)
 
 
@@ -138,21 +157,32 @@ for t, (cl, ml, sp) in zip([0, 1.5, 3, 4.5, 6, 7.5, 9],
                             ((0.0, -1, -0.2), (0, -1, 0.08), (0, -0.12, 1))]):
     c_pose(sec(t), look=cl)
     man_pose(sec(t), look=ml, spine=sp)
-# 9-13 s: its hand rises to the glass
-c_pose(sec(10.0), look=(0.0, -1, -0.2))
-c_pose(sec(13.0), look=(-0.05, -1, -0.18), hand=GLASS_PT)
-c_pose(sec(16.0), look=(-0.12, -1, -0.15), hand=GLASS_PT, tilt=-0.1)
-c_pose(sec(22.0), look=(-0.18, -1, -0.12), hand=GLASS_PT, tilt=-0.2)
-# 14.5-18 s: he answers it, on the same spot from his side
+# 9-11 s: it kneels down by the glass, level with him
+c_pose(sec(9.4), look=(0.0, -1, -0.2))
+c_pose(sec(11.0), look=(0.0, -1, 0.0), kneel=True)
+# 11.3-13.8 s: it raises its hand and lays it flat on the glass
+C_HAND = MEET + Vector((0, 0.045, -0.06))
+c_pose(sec(11.4), look=(0.0, -1, 0.0), kneel=True)
+c_pose(sec(12.6), look=(-0.03, -1, 0.02), kneel=True, hand=(C_HAND + Vector((0.05, 0.16, -0.12)), False))
+c_pose(sec(13.8), look=(-0.05, -1, 0.02), kneel=True, hand=(C_HAND, True))
+c_pose(sec(16.5), look=(-0.08, -1, 0.03), kneel=True, hand=(C_HAND, True), roll=-6)
+c_pose(sec(23.0), look=(-0.1, -1, 0.04), kneel=True, hand=(C_HAND, True), roll=-12)
+# 14.5-18 s: he answers it, palm to palm from his side of the glass
+M_HAND = MEET + Vector((0, -0.06, -0.06))
 man_pose(sec(14.5), look=(0, -1, 0.12))
-man_pose(sec(18.0), look=(0, -1, 0.15), spine=(0, -0.35, 1), hand=GLASS_PT + Vector((0, -0.03, 0)))
-man_pose(sec(22.0), look=(0, -1, 0.16), spine=(0, -0.36, 1), hand=GLASS_PT + Vector((0, -0.03, 0)))
+man_pose(sec(16.2), look=(0, -1, 0.14), spine=(0, -0.25, 1), hand=(M_HAND + Vector((0.04, -0.2, -0.16)), False),
+         lean=0.1)
+man_pose(sec(18.0), look=(0, -1, 0.15), spine=(0, -0.3, 1), hand=(M_HAND, True), lean=0.15)
+man_pose(sec(23.0), look=(0, -1, 0.16), spine=(0, -0.31, 1), hand=(M_HAND, True), lean=0.16)
 cast.key_smile(c, sec(0), 0.0)
 
 # ---------------------------------------------------------------- camera
 cam = rig.camera("cam", (1.25, -2.5, 2.45), (-0.5, 0.05, 1.05), lens=21)
 sc.camera = cam
-rig.render_settings(res=(640, 480), samples=8 if PREVIEW else 12, exposure=-0.3)
+rig.render_settings(res=(320, 240) if PREVIEW else (512, 384), samples=4 if PREVIEW else 6, exposure=-0.3)
+sc.cycles.use_fast_gi = True
+sc.cycles.diffuse_bounces = 2
+sc.cycles.glossy_bounces = 1
 out = rig.out_dir("cell")
 if "--empty" in sys.argv:
     # the morning after: both of them gone, the chair still facing the glass
@@ -168,14 +198,14 @@ if "--empty" in sys.argv:
     bpy.ops.render.render(write_still=True)
     sys.exit(0)
 if PREVIEW:
-    frames = [sec(x) for x in (0, 3, 11, 13.5, 16, 19)] if '--last' not in sys.argv else [sec(19)]
+    frames = [sec(x) for x in ([float(a) for a in __import__('os').environ['CELL_T'].split(',')] if 'CELL_T' in __import__('os').environ else (0, 3, 10.2, 11.5, 12.6, 13.8, 15.5, 16.5, 18.0, 20.0))]
 else:
-    frames = list(range(sec(0), sec(9), 6)) + list(range(sec(9), sec(22) + 1, 2))
+    frames = list(range(sec(0), sec(9), 12)) + list(range(sec(9), sec(21) + 1))
 track = {}
 for f in frames:
     sc.frame_set(f)
-    track[f] = {"creature": rig.head_box(c, cam), "man": rig.head_box(man, cam)}
-    sc.render.filepath = str(out / f"{f:04d}.png")
+    track[f] = {"creature": rig.head_box(c, cam), "man": rig.head_box(man, cam), "meet": rig.screen_pos(cam, MEET)}
+    sc.render.filepath = str(out / f"{f:05d}.png")
     bpy.ops.render.render(write_still=True)
     print("frame", f, flush=True)
 rig.write_json(out / ("track_preview.json" if PREVIEW else "track.json"), track)

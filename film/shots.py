@@ -436,30 +436,37 @@ def _tag_layer(x, y):
 
 
 class Cell(Shot):
-    """SLIDE 07: security camera, Incident 12. Time-lapse, then the hands."""
+    """SLIDE 07: security camera, Incident 12 (rendered at 60 fps). Time-lapse, then
+    it kneels and lays its hand on the glass; he answers, palm to palm."""
 
-    def __init__(self, lapse=4.6, real=(9.0, 21.0), distort=3.6, post_hold=1.4):
-        self.lapse, self.real, self.distort, self.post_hold = lapse, real, distort, post_hold
+    def __init__(self, lapse=4.6, real=(9.0, 21.0), distort=3.6, post_hold=1.4, push=(13.0, 19.0)):
+        self.lapse, self.real, self.distort, self.post_hold, self.push = lapse, real, distort, post_hold, push
         self.t_real_end = lapse + real[1] - real[0]
         super().__init__(self.t_real_end + distort + post_hold)
         self.d = RENDERS / "cell"
-        self.lapse_frames = list(range(1, 271, 6))
+        self.lapse_frames = list(range(1, 541, 12))
+        tp = self.d / "track.json"
+        tr = json.loads(tp.read_text()) if tp.exists() else {}
+        meet = next((v["meet"] for k, v in sorted(tr.items(), key=lambda kv: int(kv[0])) if int(k) >= 1081), None)
+        self.meet = (meet[0], meet[1]) if meet else (0.56, 0.48)
 
     def _src(self, t):
         if t < self.lapse:
             i = min(len(self.lapse_frames) - 1, int(t / self.lapse * len(self.lapse_frames)))
             f = self.lapse_frames[i]
-            ft = (f - 1) / 30
-            secs = 4 * 3600 * (t / self.lapse) + rng_dummy(i)
-            return f, ft, secs
+            ft = (f - 1) / 60
+            return f, ft, 4 * 3600 * (t / self.lapse) + rng_dummy(i)
         ft = self.real[0] + min(t - self.lapse, self.real[1] - self.real[0])
-        f = 1 + 2 * int(round(ft * 15))
-        f = max(271, min(661, f + (0 if f % 2 else 1)))
+        f = max(541, min(1261, int(round(ft * 60)) + 1))
         return f, ft, 4 * 3600 + 4 * 60 + 25 + (ft - self.real[0])
 
     def frame(self, t, rng):
         f, ft, secs = self._src(min(t, self.t_real_end))
-        img = View(footage_frame(self.d / f"{f:04d}.png")).render()
+        z = 1.0
+        if t >= self.lapse:      # slow push toward the two hands
+            z = 1.0 + 0.6 * look.ease((ft - self.push[0]) / (self.push[1] - self.push[0]))
+        c = (0.5 + (self.meet[0] - 0.5) * (z - 1) / 0.6 * 0.85, 0.5 + (self.meet[1] - 0.5) * (z - 1) / 0.6 * 0.85)
+        img = View(footage_frame(self.d / f"{f:05d}.png"), c, z).render()
         img = cctv_grade(barrel(img, 0.06), tint=(0.9, 1.0, 0.95))
         x = max(0.0, t - self.t_real_end)
         if x > 0:   # the recording distorts, then gives up
@@ -485,8 +492,6 @@ class Cell(Shot):
             k = min(1.0, x / 0.8)
             p.update(tracking=0.5 + 0.4 * k, tear=0.3 * k, rgb_split=3 * k, noise=0.06 + 0.1 * k, static=0.15 * k,
                      roll=1.0)
-        elif x >= self.distort:
-            p.update(static=0.0)
         return p
 
 
