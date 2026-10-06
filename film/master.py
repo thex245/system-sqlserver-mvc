@@ -40,7 +40,7 @@ def preview(budget_mb=49.0, size=(720, 540), fps=FPS, audio_kbps=96, denoise="hq
     video_kbps = int(budget_mb * 8000 / dur - audio_kbps - 12)
     vf = f"{denoise + ',' if denoise else ''}scale={size[0]}:{size[1]}:flags=lanczos,setsar=1"
     common = ["-i", str(PIC), "-i", str(MIX), "-map", "0:v", "-map", "1:a", "-vf", vf, "-c:v", "libx264",
-              "-preset", "veryslow", "-tune", "grain", "-pix_fmt", "yuv420p", "-r", str(fps), "-b:v", f"{video_kbps}k",
+              "-preset", "slower", "-tune", "grain", "-pix_fmt", "yuv420p", "-r", str(fps), "-b:v", f"{video_kbps}k",
               "-maxrate", f"{int(video_kbps * 1.8)}k", "-bufsize", f"{int(video_kbps * 4)}k"]
     log = BUILD / "video" / "x264pass"
     run(["ffmpeg", "-y", "-loglevel", "error"] + common + ["-pass", "1", "-passlogfile", str(log), "-an", "-f", "mp4",
