@@ -10,8 +10,13 @@ attach themselves to people. Ten slides, cave walls 40,000 years old, family pho
 one face always missing, a containment cell in 1986, an incident in 1997, and a final instruction
 the narrator cannot finish in its own voice.
 
-**▶ The film:** [`output/TAPE_BC_do_you_still_love_me_1080p60.mp4`](output/TAPE_BC_do_you_still_love_me_1080p60.mp4) · compact copy: [`output/TAPE_BC_do_you_still_love_me_preview.mp4`](output/TAPE_BC_do_you_still_love_me_preview.mp4)
-(≈6 min, 1440×1080 4:3 at 60 fps, English)
+**▶ The film** (≈6 min, English, 4:3 at 60 fps):
+
+| File | Resolution | Size |
+|---|---|---|
+| [`output/TAPE_BC_do_you_still_love_me_1080p60.mp4`](output/TAPE_BC_do_you_still_love_me_1080p60.mp4) | 1440×1080 | 95 MB |
+| [`output/TAPE_BC_do_you_still_love_me_preview.mp4`](output/TAPE_BC_do_you_still_love_me_preview.mp4) | 720×540 (native) | 49 MB |
+| [`output/TAPE_BC_do_you_still_love_me_mobile.mp4`](output/TAPE_BC_do_you_still_love_me_mobile.mp4) | 640×480 | 30 MB |
 
 **Script:** [`script/SCRIPT_EN.md`](script/SCRIPT_EN.md)
 
