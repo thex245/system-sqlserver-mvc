@@ -1,0 +1,4 @@
+# Build cache: downloaded third-party assets, intermediate renders, audio stems
+build/
+__pycache__/
+*.pyc
