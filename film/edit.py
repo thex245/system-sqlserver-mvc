@@ -247,10 +247,10 @@ def build():
     tl.s("door", t0 + Q.DOOR_OPEN[0] - 0.45)
     tl.s("steps", t0 + Q.WALK1[0] + 0.2, end=t0 + Q.WALK1[1], interval=0.8)
     tl.s("steps", t0 + Q.WALK2[0] + 0.2, end=t0 + Q.WALK2[1], interval=0.87)
-    tl.s("rustle", t0 + Q.KNEEL[0] + 0.2, dur=1.2, level=0.35)
+    tl.s("rustle", t0 + Q.KNEEL[0] + 0.2, dur=1.2, level=0.11)
     tl.v("s04b", t0 + 12.3)
-    tl.s("rustle", t0 + Q.REACH[0], dur=0.7, level=0.2)
-    tl.s("rustle", t0 + Q.RETRACT[0], dur=0.6, level=0.25)
+    tl.s("rustle", t0 + Q.REACH[0], dur=0.7, level=0.07)
+    tl.s("rustle", t0 + Q.RETRACT[0], dur=0.6, level=0.08)
     tl.s("glitch", t0 + Q.SKIP - 0.02, dur=0.2, level=0.6)
     tl.v("s04c", t0 + Q.SKIP + 0.4)
     for a, b in Q.FLICKERS:
