@@ -18,7 +18,7 @@ OUTPUT = ROOT / "output"
 # Internal frame size. VHS carries ~240 lines of real detail, so the picture is
 # built at 720x540 (4:3) and upscaled for delivery.
 W, H = 720, 540
-FPS = 30
+FPS = 60                         # VHS carries 60 fields per second; delivered as 1080p60
 SR = 48000                       # audio sample rate of the final mix
 
 for p in (CACHE, FONTS, MODELS, PHOTOS, MESHES, STILLS, RENDERS, AUDIO, VOICE, OUTPUT):

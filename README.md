@@ -11,7 +11,7 @@ one face always missing, a containment cell in 1986, an incident in 1997, and a 
 the narrator cannot finish in its own voice.
 
 **▶ The film:** [`output/TAPE_BC_do_you_still_love_me.mp4`](output/TAPE_BC_do_you_still_love_me.mp4)
-(≈6 min, 1440×1080, 4:3, English)
+(≈6 min, 1080p60, 4:3 pillarboxed, English)
 
 **Script:** [`script/SCRIPT_EN.md`](script/SCRIPT_EN.md)
 
