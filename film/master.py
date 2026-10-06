@@ -26,8 +26,9 @@ def run(cmd):
     subprocess.run(cmd, check=True)
 
 
-def master(video_kbps=5600, audio_kbps=192):
-    """1440x1080 @ 60 fps, two-pass to ~250 MB (fits Git LFS comfortably)."""
+def master(video_kbps=1950, audio_kbps=160):
+    """1440x1080 @ 60 fps, two-pass sized under GitHub's 100 MB file limit.
+    (master(5600, 192) gives the ~250 MB high-bitrate version.)"""
     common = ["-i", str(PIC), "-i", str(MIX), "-map", "0:v", "-map", "1:a",
               "-vf", "scale=1440:1080:flags=lanczos,setsar=1", "-c:v", "libx264", "-preset", "medium", "-tune", "grain",
               "-pix_fmt", "yuv420p", "-r", str(FPS), "-b:v", f"{video_kbps}k", "-maxrate", f"{video_kbps * 2}k",
