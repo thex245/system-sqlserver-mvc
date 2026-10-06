@@ -34,7 +34,11 @@ def master(crf=18):
     print("wrote", MASTER, f"{MASTER.stat().st_size / 1e6:.1f} MB")
 
 
-def preview(budget_mb=49.0, size=(720, 540), fps=FPS, audio_kbps=96, denoise="hqdn3d=1.2:1.2:4:4"):
+MOBILE = OUTPUT / "TAPE_BC_do_you_still_love_me_mobile.mp4"
+
+
+def preview(budget_mb=49.0, size=(720, 540), fps=FPS, audio_kbps=96, denoise="hqdn3d=1.2:1.2:4:4", out=PREVIEW,
+            limit_mb=49.9):
     """Two-pass encode that lands under `budget_mb` (MB = 10^6 bytes)."""
     dur = sf.info(str(MIX)).duration
     video_kbps = int(budget_mb * 8000 / dur - audio_kbps - 12)
@@ -46,13 +50,19 @@ def preview(budget_mb=49.0, size=(720, 540), fps=FPS, audio_kbps=96, denoise="hq
     run(["ffmpeg", "-y", "-loglevel", "error"] + common + ["-pass", "1", "-passlogfile", str(log), "-an", "-f", "mp4",
         "/dev/null"])
     run(["ffmpeg", "-y", "-loglevel", "error"] + common + ["-pass", "2", "-passlogfile", str(log), "-c:a", "aac",
-        "-b:a", f"{audio_kbps}k", "-movflags", "+faststart"] + META + ["-shortest", str(PREVIEW)])
-    mb = PREVIEW.stat().st_size / 1e6
-    print("wrote", PREVIEW, f"{mb:.1f} MB  (video {video_kbps} kb/s)")
-    assert mb < 49.9, "preview over budget"
+        "-b:a", f"{audio_kbps}k", "-movflags", "+faststart"] + META + ["-shortest", str(out)])
+    mb = out.stat().st_size / 1e6
+    print("wrote", out, f"{mb:.1f} MB  (video {video_kbps} kb/s)")
+    assert mb < limit_mb, "over budget"
+
+
+def mobile():
+    """Phone copy under 30 MiB (chat upload limit): 640x480, still 60 fps, a little more grain removed."""
+    preview(budget_mb=30.0, size=(640, 480), audio_kbps=80, denoise="hqdn3d=2.5:2.5:6:6", out=MOBILE, limit_mb=31.4)
 
 
 if __name__ == "__main__":
     if "--preview-only" not in sys.argv:
         master()
     preview()
+    mobile()
