@@ -199,6 +199,10 @@ if "--empty" in sys.argv:
     sys.exit(0)
 if PREVIEW:
     frames = [sec(x) for x in ([float(a) for a in __import__('os').environ['CELL_T'].split(',')] if 'CELL_T' in __import__('os').environ else (0, 3, 10.2, 11.5, 12.6, 13.8, 15.5, 16.5, 18.0, 20.0))]
+elif "--frames" in sys.argv:
+    i = sys.argv.index("--frames")
+    step = int(sys.argv[sys.argv.index("--step") + 1]) if "--step" in sys.argv else 1
+    frames = list(range(int(sys.argv[i + 1]), int(sys.argv[i + 2]) + 1, step))
 else:
     frames = list(range(sec(0), sec(9), 12)) + list(range(sec(9), sec(21) + 1))
 track = {}
@@ -208,4 +212,7 @@ for f in frames:
     sc.render.filepath = str(out / f"{f:05d}.png")
     bpy.ops.render.render(write_still=True)
     print("frame", f, flush=True)
-rig.write_json(out / ("track_preview.json" if PREVIEW else "track.json"), track)
+tp = out / ("track_preview.json" if PREVIEW else "track.json")
+old = __import__("json").loads(tp.read_text()) if tp.exists() else {}
+old.update({str(k): val for k, val in track.items()})
+rig.write_json(tp, old)
