@@ -235,21 +235,33 @@ def build():
 
     # ------------------------------------------------------------ SLIDE 04 — FIRST DOCUMENTED CONTACT
     slide_title(tl, 4, "FIRST DOCUMENTED CONTACT")
-    cont = S.Containment(t_enhance=20.0, t_freeze=22.4, hold=0.6 + D["s04d"] + 1.6)
+    import p04 as Q
+    cont = S.Containment(hold=0.6 + D["s04d"] + 1.8)
     t0 = tl.add(cont)
-    tl.bed("roomtone", t0, t0 + cont.dur, 1.0)
-    tl.bed("drone", t0, t0 + cont.dur, 0.35)
+    tl.bed("roomtone", t0, t0 + Q.BLACKOUT[0], 1.0)          # the hum dies with the light
+    tl.bed("drone", t0, t0 + Q.STARE, 0.35)
+    tl.bed("drone", t0 + Q.FREEZE, t0 + cont.dur, 0.7)
     tl.v("s04a", t0 + 1.0)
     tl.s("beep", t0 + 3.0, freq=1600, dur=0.08, level=0.12)
-    tl.s("door", t0 + 6.0)
-    tl.s("steps", t0 + 6.6, end=t0 + 10.3, interval=0.52)
-    tl.v("s04b", t0 + 10.5)
-    tl.v("s04c", t0 + 17.0)
-    tl.s("flicker", t0 + 20.6, dur=0.25)
-    tl.s("flicker", t0 + 21.6, dur=0.45)
-    tl.s("enhance", t0 + 20.0)
-    tl.s("freeze", t0 + 22.4)
-    tl.v("s04d", t0 + 22.4 + 0.6)
+    tl.s("latch", t0 + Q.LATCH)
+    tl.s("door", t0 + Q.DOOR_OPEN[0] - 0.45)
+    tl.s("steps", t0 + Q.WALK1[0] + 0.2, end=t0 + Q.WALK1[1], interval=0.8)
+    tl.s("steps", t0 + Q.WALK2[0] + 0.2, end=t0 + Q.WALK2[1], interval=0.87)
+    tl.s("rustle", t0 + Q.KNEEL[0] + 0.2, dur=1.2, level=0.35)
+    tl.v("s04b", t0 + 12.3)
+    tl.s("rustle", t0 + Q.REACH[0], dur=0.7, level=0.2)
+    tl.s("rustle", t0 + Q.RETRACT[0], dur=0.6, level=0.25)
+    tl.s("glitch", t0 + Q.SKIP - 0.02, dur=0.2, level=0.6)
+    tl.v("s04c", t0 + Q.SKIP + 0.4)
+    for a, b in Q.FLICKERS:
+        tl.s("flicker", t0 + a - 0.02, dur=b - a + 0.06)
+    tl.s("power_down", t0 + Q.BLACKOUT[0])
+    tl.silences.append((t0 + Q.STARE, t0 + Q.ZOOM2))      # it is looking at us; nothing makes a sound
+    for k, z in enumerate((Q.ZOOM2, Q.ZOOM4, Q.ZOOM8)):
+        tl.s("zoom_click", t0 + z, level=0.45 + 0.15 * k)
+    tl.s("sting", t0 + Q.FREEZE, level=0.7)
+    tl.s("freeze", t0 + Q.FREEZE)
+    tl.v("s04d", t0 + Q.FREEZE + 0.6)
 
     # ------------------------------------------------------------ SLIDE 05 — BEHAVIOR
     slide_title(tl, 5, "BEHAVIOR")

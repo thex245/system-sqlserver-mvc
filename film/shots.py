@@ -338,80 +338,88 @@ def clock(base_h, base_m, base_s, secs):
 
 
 class Containment(Shot):
-    """SLIDE 04: CCTV of P-04, digital enhance onto its face, freeze."""
+    """SLIDE 04: 60 fps CCTV of P-04 (film/p04.py), the stepped digital enhance onto
+    its face, frame hold."""
 
-    def __init__(self, t_enhance=20.0, t_freeze=22.4, hold=3.6):
-        self.te, self.tf = t_enhance, t_freeze
-        super().__init__(t_freeze + hold)
-        d = RENDERS / "containment"
-        self.d1, self.d2 = d / "cam1", d / "cam2"
-        tp = self.d1 / "track_1_721.json"
+    def __init__(self, hold=3.6):
+        import p04
+        self.P = p04
+        super().__init__(p04.FREEZE + hold)
+        d = RENDERS / "p04"
+        self.d = {k: d / k for k in ("cam1", "z4", "z8")}
+        tp = self.d["cam1"] / "track.json"
         tr = json.loads(tp.read_text()) if tp.exists() else {}
         self.track = {int(k): v["creature"] for k, v in tr.items()}
+        zp = d / "zoom.json"
+        self.zoom = json.loads(zp.read_text()) if zp.exists() else {"z4": {"center": [0.6, 0.5]}}
 
-    @staticmethod
-    def fnum(ft, lo=1, hi=721):
-        f = 1 + 2 * int(round(ft * 15))
-        return max(lo, min(hi, f))
+    def src(self, cam, f):
+        return footage_frame(self.d[cam] / f"{f:05d}.png")
 
     def frame(self, t, rng):
-        ft = min(t, self.tf)
-        if t < self.te + 0.8:
-            f = self.fnum(ft)
-            src = footage_frame(self.d1 / f"{f:04d}.png")
-            if t >= self.te:   # digital zoom toward the face
-                b = self.track.get(f, [0.5, 0.4, 0.55, 0.45])
-                cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
-                x = look.ease((t - self.te) / 0.8)
-                v = View(src, (0.5 + (cx - 0.5) * x, 0.5 + (cy - 0.5) * x), 1 + 4.5 * x)
-                img = v.render()
-                img = cv2.resize(cv2.resize(img, (W // 4, H // 4), interpolation=cv2.INTER_AREA), (W, H),
-                                 interpolation=cv2.INTER_NEAREST) * 0.5 + img * 0.5
-            else:
-                img = View(src).render()
-            if t >= self.te + 0.55:
-                f2 = self.fnum(ft, 541, 721)
-                img2 = View(footage_frame(self.d2 / f"{f2:04d}.png")).render()
-                a = look.ease((t - self.te - 0.55) / 0.25)
-                img = img * (1 - a) + img2 * a
+        P = self.P
+        ft = min(t, P.FREEZE)
+        f = P.frame(ft)
+        label = None
+        if ft < P.STATIC_END:
+            img = cctv_grade(barrel(View(self.src("cam1", 1)).render()))
+        elif ft < P.ZOOM2:
+            img = cctv_grade(barrel(View(self.src("cam1", f)).render()))
+        elif ft < P.ZOOM4:      # x2: a crop of the CCTV picture itself
+            base = cctv_grade(barrel(View(self.src("cam1", f)).render()))
+            cx, cy = self.zoom["z4"]["center"]
+            img = View(base, (cx, cy), 2.0).render()
+            img = _digital(img, 2)
+            label = "DIGITAL ENHANCE x2"
+        elif ft < P.ZOOM8:
+            img = _digital(cctv_grade(barrel(View(self.src("z4", f)).render(), 0.03)), 3)
+            label = "DIGITAL ENHANCE x4"
         else:
-            f2 = self.fnum(ft, 541, 721)
-            src = footage_frame(self.d2 / f"{f2:04d}.png")
-            z = 1.0 if t < self.tf else 1.0 + 0.22 * look.ease((t - self.tf) / (self.dur - self.tf))
-            img = View(src, (0.52, 0.47), z).render()
-        img = cctv_grade(barrel(img))
-        enhanced = t >= self.te + 0.55
+            z = 1.0 if t < P.FREEZE else 1.0 + 0.16 * look.ease((t - P.FREEZE) / (self.dur - P.FREEZE))
+            src = self.src("z8", P.frame(ft))
+            img = _digital(cctv_grade(barrel(View(src, (0.5, 0.5), z).render(), 0.03)), 4)
+            label = "DIGITAL ENHANCE x8"
+        secs = ft + (P.SKIP_SECONDS if ft >= P.SKIP else 0)
         lines = [(26, 22, "CAM 01", "la"), (W - 26, 22, "09-17-1986", "ra"),
-                 (W - 26, 50, clock(2, 41, 7, ft), "ra"), (26, H - 56, "C-WING / CONTAINMENT 4", "la")]
-        if enhanced:
-            lines.append((26, 50, "DIGITAL ENHANCE x4", "la"))
-        if t >= self.tf:
+                 (W - 26, 50, clock(2, 41, 7, secs), "ra"), (26, H - 56, "C-WING / CONTAINMENT 4", "la")]
+        if label:
+            lines.append((26, 50, label, "la"))
+        if t >= P.FREEZE:
             lines.append((W // 2, 22, "FRAME HOLD", "ma"))
         img = _osd_cached(tuple(lines)).over(img)
-        # P-04 tag
-        if 3.0 <= t < 8.5 and not enhanced:
-            if not (t < 3.6 and int(t * 6) % 2):
-                f = self.fnum(ft)
-                b = self.track.get(f)
-                if b:
-                    v = View(footage_frame(self.d1 / f"{f:04d}.png"))
-                    hb = v.box(b)
-                    cx = (hb[0] + hb[2]) / 2
-                    hh = hb[3] - hb[1]
-                    x0, y0 = int(cx - hh * 2.2), int(hb[1] - hh * 0.6)
-                    x1, y1 = int(cx + hh * 2.2), int(hb[3] + hh * 3.6)
-                    cv2.rectangle(img, (x0, y0), (x1, y1), (0.95, 0.95, 0.9), 1)
-                    img = _tag_layer(x1 + 6, y0).over(img)
+        if 3.0 <= t < 8.5 and not (t < 3.6 and int(t * 6) % 2):     # the P-04 tag
+            b = self.track.get(1 if ft < P.STATIC_END else f)
+            if b:
+                hb = View(self.src("cam1", 1)).box(b)
+                cx = (hb[0] + hb[2]) / 2
+                hh = hb[3] - hb[1]
+                x0, y0 = int(cx - hh * 2.4), int(hb[1] - hh * 0.6)
+                x1, y1 = int(cx + hh * 2.4), int(hb[3] + hh * 3.4)
+                cv2.rectangle(img, (x0, y0), (x1, y1), (0.95, 0.95, 0.9), 1)
+                img = _tag_layer(x1 + 6, y0).over(img)
         return img
 
     def fx(self, t):
+        P = self.P
         p = {"noise": 0.06, "streak": 0.035, "jitter": 0.5, "sat": 0.6}
-        if self.te <= t < self.te + 0.12:
-            p.update(tracking=0.5)
-        if t >= self.tf:
-            # paused-tape look: a noise bar parked across the picture
-            p.update(tracking=0.25, jitter=0.9)
+        for a in (P.SKIP, P.ZOOM2, P.ZOOM4, P.ZOOM8):
+            if a - 1 / 60 <= t < a + 0.1:
+                p.update(tracking=0.7, static=0.25, tear=0.3)
+        if P.SKIP - 1 / 60 <= t < P.SKIP + 0.18:
+            p.update(tracking=0.9, static=0.45, tear=0.6, rgb_split=3)
+        if P.STARE <= t < P.ZOOM2:                     # it is looking at us: the picture goes very still
+            p.update(jitter=0.15, wobble=0.0, dropout=0.0, noise=0.045)
+        if t >= P.FREEZE:
+            p.update(tracking=0.25, jitter=0.9)       # paused-tape noise bar
         return p
+
+
+def _digital(img, level):
+    """Digital zoom look: blocky upscale blended with the image."""
+    q = {2: 3, 3: 3, 4: 2}[level]
+    small = cv2.resize(img, (W // q, H // q), interpolation=cv2.INTER_AREA)
+    blocky = cv2.resize(small, (W, H), interpolation=cv2.INTER_NEAREST)
+    return blocky * 0.55 + img * 0.45
 
 
 @functools.lru_cache(512)
@@ -563,8 +571,9 @@ def _rej_layer(x, y, size, col, centered):
 
 
 def _grin():
-    src = footage_frame(RENDERS / "containment" / "cam2" / "0673.png")
-    return cctv_grade(View(src, (0.52, 0.47), 1.3).render())
+    import p04
+    src = footage_frame(RENDERS / "p04" / "z8" / f"{p04.frame(p04.FREEZE):05d}.png")
+    return cctv_grade(View(src, (0.5, 0.5), 1.15).render())
 
 
 Containment.grin_frame = staticmethod(functools.lru_cache(1)(_grin))

@@ -182,6 +182,10 @@ class Character:
             if seg == "Head":
                 if "look" in spec:
                     self.look(spec["look"])
+                if spec.get("roll"):
+                    hb = self.pb("Head")
+                    fwd = (self.bone_world(hb).to_3x3() @ self._head_fwd_local).normalized()
+                    self.rotate_world(hb, Quaternion(fwd, math.radians(spec["roll"])))
                 continue
             if seg in spec:
                 self.aim(seg, spec[seg])
@@ -445,6 +449,25 @@ def set_interpolation(obj, kind="LINEAR", data=False):
     for fc in fcurves_of(obj, data):
         for kp in fc.keyframe_points:
             kp.interpolation = kind
+
+
+def id_fcurves(idb):
+    """F-curves of any animated ID (light data, node tree, ...)."""
+    ad = idb.animation_data
+    if not ad or not ad.action:
+        return []
+    act = ad.action
+    if hasattr(act, "fcurves"):
+        return list(act.fcurves)
+    from bpy_extras import anim_utils
+    cb = anim_utils.action_get_channelbag_for_slot(act, ad.action_slot)
+    return list(cb.fcurves) if cb else []
+
+
+def constant_interp(idb):
+    for fc in id_fcurves(idb):
+        for kp in fc.keyframe_points:
+            kp.interpolation = "CONSTANT"
 
 
 def screen_pos(cam, world_pt):

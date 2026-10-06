@@ -351,6 +351,63 @@ def sfx_static_burst(dur=1.0, level=0.5, **_):
     return x
 
 
+def sfx_latch(**_):
+    """A door handle pressed and rattled: three metallic knocks with a short ring."""
+    n = secs(0.6)
+    x = np.zeros(n, np.float32)
+    for t0, a in ((0.0, 0.8), (0.08, 0.5), (0.16, 0.6), (0.25, 0.35)):
+        m = secs(0.12)
+        k = bp(noise(m), 1200, 7000) * expdecay(m, 0.006) + sine(1870, m) * expdecay(m, 0.03) * 0.25
+        x[secs(t0):secs(t0) + m] += k * a
+    return reverb(x, 0.3, 0.9, 0.2, 5000)[:n] * 0.4
+
+
+def sfx_rustle(dur=1.0, level=0.3, **_):
+    """Fabric and gear moving: soft, uneven band-limited noise."""
+    n = secs(dur)
+    env = np.abs(np.interp(np.arange(n), np.linspace(0, n, 9), RNG.random(9))).astype(np.float32)
+    x = bp(noise(n), 900, 5000) * env * env_adsr(n, 0.08, 0.2)
+    return x * level * 0.35
+
+
+def sfx_power_down(**_):
+    """The tube dies: a relay thump and the buzz collapsing."""
+    n = secs(1.4)
+    x = np.zeros(n, np.float32)
+    th = sine(np.linspace(80, 30, secs(0.5)), secs(0.5)) * expdecay(secs(0.5), 0.12)
+    x[:len(th)] += th * 0.8
+    m = secs(0.35)
+    buzz = np.tanh(sine(np.linspace(120, 40, m), m) * 3) * np.linspace(0.6, 0, m)
+    x[:m] += buzz * 0.4
+    c = sfx_click(0.7)
+    x[:len(c)] += c
+    return x * 0.6
+
+
+def sfx_zoom_click(level=0.5, **_):
+    """Each step of the enhance: a hard relay click with a low hit under it."""
+    n = secs(0.9)
+    x = np.zeros(n, np.float32)
+    c = sfx_click(1.0)
+    x[:len(c)] += c
+    hit = sine(np.linspace(95, 40, secs(0.5)), secs(0.5)) * expdecay(secs(0.5), 0.1)
+    x[:len(hit)] += hit * 0.9
+    st = bp(noise(secs(0.08)), 800, 9000) * env_adsr(secs(0.08), 0.001, 0.05)
+    x[:len(st)] += st * 0.5
+    return np.tanh(x * 1.4) * level
+
+
+def sfx_sting(level=0.7, **_):
+    """Frame hold: a dissonant high ring over a sub boom, decaying slowly."""
+    n = secs(4.5)
+    tt = np.arange(n) / SR
+    ring = (np.sin(2 * np.pi * 3150 * tt) * 0.5 + np.sin(2 * np.pi * 3311 * tt) * 0.4 +
+            np.sin(2 * np.pi * 4720 * tt) * 0.2).astype(np.float32) * expdecay(n, 1.6) * 0.18
+    boom = sine(np.linspace(60, 28, n), n) * expdecay(n, 0.9)
+    x = ring + np.tanh(boom * 1.5) * 0.8 + bp(noise(n), 200, 3000) * expdecay(n, 0.15) * 0.4
+    return reverb(x, 0.35, 3.0, 1.0, 6000)[:secs(6)] * level
+
+
 SFX = {k[4:]: v for k, v in globals().items() if k.startswith("sfx_")}
 
 

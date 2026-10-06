@@ -10,8 +10,9 @@ from config import H, OUTPUT, RENDERS, W
 
 def main():
     rng = np.random.default_rng(4)
-    src = shots.footage_frame(RENDERS / "containment" / "cam2" / "0673.png")
-    img = shots.cctv_grade(shots.barrel(look.View(src, (0.52, 0.47), 1.25).render()))
+    import p04
+    src = shots.footage_frame(RENDERS / "p04" / "z8" / f"{p04.frame(p04.FREEZE):05d}.png")
+    img = shots.cctv_grade(shots.barrel(look.View(src, (0.5, 0.5), 1.15).render(), 0.03))
     lines = ((26, 22, "CAM 01", "la"), (W - 26, 22, "09-17-1986", "ra"), (W - 26, 50, "02:41:29", "ra"),
              (W // 2, 22, "FRAME HOLD", "ma"))
     img = shots._osd_cached(lines).over(img)
