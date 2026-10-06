@@ -26,11 +26,17 @@ def run(cmd):
     subprocess.run(cmd, check=True)
 
 
-def master(crf=18):
-    run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(PIC), "-i", str(MIX), "-map", "0:v", "-map", "1:a",
-         "-vf", "scale=1440:1080:flags=lanczos,setsar=1", "-c:v", "libx264", "-preset", "slow", "-tune", "grain",
-         "-crf", str(crf), "-pix_fmt", "yuv420p", "-r", str(FPS), "-c:a", "aac", "-b:a", "256k",
-         "-movflags", "+faststart"] + META + ["-shortest", str(MASTER)])
+def master(video_kbps=5600, audio_kbps=192):
+    """1440x1080 @ 60 fps, two-pass to ~250 MB (fits Git LFS comfortably)."""
+    common = ["-i", str(PIC), "-i", str(MIX), "-map", "0:v", "-map", "1:a",
+              "-vf", "scale=1440:1080:flags=lanczos,setsar=1", "-c:v", "libx264", "-preset", "medium", "-tune", "grain",
+              "-pix_fmt", "yuv420p", "-r", str(FPS), "-b:v", f"{video_kbps}k", "-maxrate", f"{video_kbps * 2}k",
+              "-bufsize", f"{video_kbps * 4}k"]
+    log = BUILD / "video" / "x264master"
+    run(["ffmpeg", "-y", "-loglevel", "error"] + common + ["-pass", "1", "-passlogfile", str(log), "-an", "-f", "mp4",
+        "/dev/null"])
+    run(["ffmpeg", "-y", "-loglevel", "error"] + common + ["-pass", "2", "-passlogfile", str(log), "-c:a", "aac",
+        "-b:a", f"{audio_kbps}k", "-movflags", "+faststart"] + META + ["-shortest", str(MASTER)])
     print("wrote", MASTER, f"{MASTER.stat().st_size / 1e6:.1f} MB")
 
 
