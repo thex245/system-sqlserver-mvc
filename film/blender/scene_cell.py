@@ -163,7 +163,8 @@ c_pose(sec(11.0), look=(0.0, -1, 0.0), kneel=True)
 # 11.3-13.8 s: it raises its hand and lays it flat on the glass
 C_HAND = MEET + Vector((0, 0.045, -0.06))
 c_pose(sec(11.4), look=(0.0, -1, 0.0), kneel=True)
-c_pose(sec(12.6), look=(-0.03, -1, 0.02), kneel=True, hand=(C_HAND + Vector((0.05, 0.16, -0.12)), False))
+c_pose(sec(11.95), look=(-0.01, -1, 0.0), kneel=True, hand=(C_POS + Vector((0.12, -0.2, 0.78)), False))   # in front of its chest
+c_pose(sec(12.6), look=(-0.03, -1, 0.02), kneel=True, hand=(C_HAND + Vector((-0.02, 0.14, -0.1)), False))
 c_pose(sec(13.8), look=(-0.05, -1, 0.02), kneel=True, hand=(C_HAND, True))
 c_pose(sec(16.5), look=(-0.08, -1, 0.03), kneel=True, hand=(C_HAND, True), roll=-6)
 c_pose(sec(23.0), look=(-0.1, -1, 0.04), kneel=True, hand=(C_HAND, True), roll=-12)
